@@ -93,16 +93,16 @@ export function Upload() {
       <LayoutS.PageHeader>
         <LayoutS.PageTitle>Upload</LayoutS.PageTitle>
         <LayoutS.PageSubtitle>
-          Envie planilhas Excel (polpa ou extrato). Uma aba ou todas as abas de uma vez.
+          Envie planilhas Excel (polpa ou extrato). Um produto ou base completa de uma vez.
         </LayoutS.PageSubtitle>
       </LayoutS.PageHeader>
       <LayoutS.PageContent>
         <S.UploadModes>
           <S.ModeButton type="button" $active={modo === "uma"} onClick={() => { setModo("uma"); resetMessage() }}>
-            Uma aba
+            Um produto
           </S.ModeButton>
           <S.ModeButton type="button" $active={modo === "todas"} onClick={() => { setModo("todas"); resetMessage() }}>
-            Todas as abas
+            Base completa
           </S.ModeButton>
         </S.UploadModes>
 
@@ -153,7 +153,7 @@ export function Upload() {
           ) : (
             <form onSubmit={handleSubmitTodas}>
               <S.FormRow>
-                <S.Label htmlFor="upload-file-todas">Arquivo Excel (.xlsx) com várias abas</S.Label>
+                <S.Label htmlFor="upload-file-todas">Arquivo Excel (.xlsx) da base completa</S.Label>
                 <S.Input
                   id="upload-file-todas"
                   type="file"
@@ -163,7 +163,7 @@ export function Upload() {
                 />
               </S.FormRow>
               <S.FormRow>
-                <S.Label htmlFor="upload-ano-todas">Ano (aplicado a todas as abas)</S.Label>
+                <S.Label htmlFor="upload-ano-todas">Ano (aplicado à base completa)</S.Label>
                 <S.Select id="upload-ano-todas" value={year} onChange={(e) => setYear(Number(e.target.value))}>
                   {ANOS.map((a) => (
                     <option key={a} value={a}>
@@ -177,7 +177,7 @@ export function Upload() {
                 identificar tipo e mês.
               </p>
               <S.SubmitButton type="submit" disabled={loading}>
-                {loading ? "Enviando…" : "Enviar todas as abas"}
+                {loading ? "Enviando…" : "Enviar base completa"}
               </S.SubmitButton>
             </form>
           )}

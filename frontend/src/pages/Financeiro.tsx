@@ -4,29 +4,18 @@ import * as S from "@/components/dashboard/styled"
 import * as GeoS from "@/components/geografia/styled"
 import { KpiCard } from "@/components/home/KpiCard"
 import { PeriodSelector } from "@/components/home/PeriodSelector"
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  Cell,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Legend,
-} from "recharts"
+import { ChartReceita } from "@/components/dashboard/ChartReceita"
+import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts"
 import { colors } from "@/theme/colors"
 import {
   fetchPeriodsTodos,
   fetchPeriods,
   fetchFinanceiroResumo,
   fetchFinanceiroReceitaPorPeriodo,
+  fetchTimeseriesRevenue,
   type FinanceiroResumo,
   type FinanceiroPeriodoPoint,
+  type TimeseriesPoint,
 } from "@/services/api"
 
 const formatCurrency = (v: number) =>
@@ -48,6 +37,7 @@ export function Financeiro() {
   const [fromComp, setFromComp] = useState("")
   const [toComp, setToComp] = useState("")
   const [resumo, setResumo] = useState<FinanceiroResumo | null>(null)
+  const [timeseries, setTimeseries] = useState<TimeseriesPoint[]>([])
   const [seriePeriodo, setSeriePeriodo] = useState<FinanceiroPeriodoPoint[]>([])
   const [loadingPeriods, setLoadingPeriods] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
@@ -89,6 +79,7 @@ export function Financeiro() {
   useEffect(() => {
     if (!fromComp && !toComp) {
       setResumo(null)
+      setTimeseries([])
       setSeriePeriodo([])
       setLoadingData(false)
       return
@@ -98,13 +89,38 @@ export function Financeiro() {
     setError(null)
     const load = async () => {
       try {
-        const [resumoRes, serieRes] = await Promise.all([
-          fetchFinanceiroResumo(tipo, fromComp, toComp),
-          fetchFinanceiroReceitaPorPeriodo(tipo, fromComp, toComp),
-        ])
-        if (cancelled) return
-        setResumo(resumoRes)
-        setSeriePeriodo(serieRes)
+        if (tipo === "todos") {
+          const [resumoRes, serieRes, tsPolpa, tsExtrato] = await Promise.all([
+            fetchFinanceiroResumo(tipo, fromComp, toComp),
+            fetchFinanceiroReceitaPorPeriodo(tipo, fromComp, toComp),
+            fetchTimeseriesRevenue("polpa", fromComp, toComp),
+            fetchTimeseriesRevenue("extrato", fromComp, toComp),
+          ])
+          if (cancelled) return
+          setResumo(resumoRes)
+          setSeriePeriodo(serieRes)
+          const byPeriod: Record<string, number> = {}
+          tsPolpa.forEach((d) => {
+            byPeriod[d.periodo] = (byPeriod[d.periodo] ?? 0) + d.receita
+          })
+          tsExtrato.forEach((d) => {
+            byPeriod[d.periodo] = (byPeriod[d.periodo] ?? 0) + d.receita
+          })
+          const merged: TimeseriesPoint[] = Object.entries(byPeriod)
+            .map(([periodo, receita]) => ({ periodo, receita }))
+            .sort((a, b) => a.periodo.localeCompare(b.periodo))
+          setTimeseries(merged)
+        } else {
+          const [resumoRes, serieRes, tsRes] = await Promise.all([
+            fetchFinanceiroResumo(tipo, fromComp, toComp),
+            fetchFinanceiroReceitaPorPeriodo(tipo, fromComp, toComp),
+            fetchTimeseriesRevenue(tipo, fromComp, toComp),
+          ])
+          if (cancelled) return
+          setResumo(resumoRes)
+          setSeriePeriodo(serieRes)
+          setTimeseries(tsRes)
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Erro ao carregar dados financeiros.")
       } finally {
@@ -192,105 +208,14 @@ export function Financeiro() {
               </div>
             )}
 
-            {/* Gráfico: Receita por período (uma ou duas linhas) */}
-            <S.ChartCard style={{ marginBottom: "1.5rem" }}>
-              <S.ChartTitle>Receita por período</S.ChartTitle>
-              {loadingData && <S.ChartPlaceholder>Carregando…</S.ChartPlaceholder>}
-              {!loadingData && seriePeriodo.length > 0 && (
-                <ResponsiveContainer width="100%" height={320}>
-                  <LineChart data={seriePeriodo} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.grayPale} />
-                    <XAxis
-                      dataKey="periodo"
-                      tickFormatter={formatPeriodo}
-                      tick={{ fontSize: 12, fill: colors.textMuted }}
-                      axisLine={{ stroke: colors.grayPale }}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => formatCurrency(v)}
-                      tick={{ fontSize: 12, fill: colors.textMuted }}
-                      axisLine={{ stroke: colors.grayPale }}
-                      width={72}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => [formatCurrency(value), "Receita"]}
-                      labelFormatter={(label) => formatPeriodo(String(label))}
-                      contentStyle={{
-                        borderRadius: 8,
-                        border: `1px solid ${colors.grayPale}`,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                      }}
-                    />
-                    {tipo === "todos" ? (
-                      <>
-                        <Line
-                          type="monotone"
-                          dataKey="receita_polpa"
-                          name="Polpa"
-                          stroke={colors.green}
-                          strokeWidth={2}
-                          dot={{ fill: colors.green }}
-                          activeDot={{ r: 6 }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="receita_extrato"
-                          name="Extrato"
-                          stroke={colors.amber}
-                          strokeWidth={2}
-                          dot={{ fill: colors.amber }}
-                          activeDot={{ r: 6 }}
-                        />
-                        <Legend />
-                      </>
-                    ) : (
-                      <Line
-                        type="monotone"
-                        dataKey="receita"
-                        name="Receita"
-                        stroke={colors.green}
-                        strokeWidth={2}
-                        dot={{ fill: colors.green }}
-                        activeDot={{ r: 6 }}
-                      />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-              {!loadingData && !seriePeriodo.length && (
-                <S.ChartPlaceholder>Nenhum dado no período selecionado.</S.ChartPlaceholder>
-              )}
-            </S.ChartCard>
-
-            {/* Gráfico: Receita por período (área preenchida) */}
-            {!loadingData && seriePeriodo.length > 0 && (
-              <S.ChartCard style={{ marginBottom: "1.5rem" }}>
-                <S.ChartTitle>Receita por período (área)</S.ChartTitle>
-                <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={seriePeriodo} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                    <defs>
-                      <linearGradient id="areaReceitaFin" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={colors.green} stopOpacity={0.4} />
-                        <stop offset="100%" stopColor={colors.green} stopOpacity={0.05} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.grayPale} />
-                    <XAxis dataKey="periodo" tickFormatter={formatPeriodo} tick={{ fontSize: 12 }} axisLine={{ stroke: colors.grayPale }} />
-                    <YAxis tickFormatter={(v) => formatReceita(v)} width={72} tick={{ fontSize: 12 }} axisLine={{ stroke: colors.grayPale }} />
-                    <Tooltip formatter={(v: number) => [formatReceita(v), "Receita"]} labelFormatter={(l) => formatPeriodo(String(l))} />
-                    {tipo === "todos" ? (
-                      <>
-                        <Area type="monotone" dataKey="receita_polpa" stackId="1" stroke={colors.green} fill="url(#areaReceitaFin)" name="Polpa" />
-                        <Area type="monotone" dataKey="receita_extrato" stackId="1" stroke={colors.amber} fill={colors.amber} fillOpacity={0.3} name="Extrato" />
-                        <Legend />
-                      </>
-                    ) : (
-                      <Area type="monotone" dataKey="receita" stroke={colors.green} strokeWidth={2} fill="url(#areaReceitaFin)" name="Receita" />
-                    )}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </S.ChartCard>
-            )}
+            {/* Gráfico: Receita por período (mesmo da Visão geral) */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <ChartReceita
+                data={timeseries}
+                loading={loadingData}
+                tipo={tipo === "todos" ? "polpa" : tipo}
+              />
+            </div>
 
             {/* Gráfico: Polpa vs Extrato (só quando tipo = todos) */}
             {tipo === "todos" && resumo && (resumo.receita_polpa != null || resumo.receita_extrato != null) && (

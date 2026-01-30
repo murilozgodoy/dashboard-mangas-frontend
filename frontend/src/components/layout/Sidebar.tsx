@@ -9,7 +9,6 @@ import {
   Award,
   Package,
   Droplets,
-  LineChart,
   MapPin,
   PanelLeftClose,
   PanelLeft,
@@ -23,7 +22,6 @@ const mainNavItems = [
   { to: "/segmentos", label: "Segmentos", icon: PieChart },
   { to: "/quantidade", label: "Quantidade", icon: Hash },
   { to: "/qualidade", label: "Qualidade", icon: Award },
-  { to: "/analise-avancada", label: "Análise avançada", icon: LineChart },
 ]
 
 const produtosItems = [

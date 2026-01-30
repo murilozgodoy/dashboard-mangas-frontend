@@ -10,7 +10,6 @@ import { Quantidade } from "@/pages/Quantidade"
 import { Qualidade } from "@/pages/Qualidade"
 import { Polpa } from "@/pages/Polpa"
 import { Extrato } from "@/pages/Extrato"
-import { AnaliseAvancada } from "@/pages/AnaliseAvancada"
 
 function App() {
   return (
@@ -26,7 +25,6 @@ function App() {
           <Route path="qualidade" element={<Qualidade />} />
           <Route path="polpa" element={<Polpa />} />
           <Route path="extrato" element={<Extrato />} />
-          <Route path="analise-avancada" element={<AnaliseAvancada />} />
           <Route path="geografia" element={<Geografia />} />
           <Route path="dashboard" element={<Navigate to="/" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />

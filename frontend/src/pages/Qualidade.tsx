@@ -20,10 +20,8 @@ import {
   fetchPeriods,
   fetchNpsPorPeriodo,
   fetchNpsPorCanal,
-  fetchIndicesPorPeriodo,
   type NpsPeriodoPoint,
   type NpsCanalItem,
-  type IndicesPeriodoPoint,
 } from "@/services/api"
 
 const formatNumber = (v: number) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(v)
@@ -44,7 +42,6 @@ export function Qualidade() {
   const [toComp, setToComp] = useState("")
   const [npsPeriodo, setNpsPeriodo] = useState<NpsPeriodoPoint[]>([])
   const [npsCanal, setNpsCanal] = useState<NpsCanalItem[]>([])
-  const [indicesPeriodo, setIndicesPeriodo] = useState<IndicesPeriodoPoint[]>([])
   const [loadingPeriods, setLoadingPeriods] = useState(true)
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -83,7 +80,6 @@ export function Qualidade() {
     if (!fromComp && !toComp) {
       setNpsPeriodo([])
       setNpsCanal([])
-      setIndicesPeriodo([])
       setLoadingData(false)
       return
     }
@@ -92,15 +88,13 @@ export function Qualidade() {
     setError(null)
     const load = async () => {
       try {
-        const [npsP, npsC, indP] = await Promise.all([
+        const [npsP, npsC] = await Promise.all([
           fetchNpsPorPeriodo(tipo, fromComp, toComp),
           fetchNpsPorCanal(tipo, fromComp, toComp, 10),
-          fetchIndicesPorPeriodo(tipo, fromComp, toComp),
         ])
         if (cancelled) return
         setNpsPeriodo(npsP)
         setNpsCanal(npsC)
-        setIndicesPeriodo(indP)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Erro ao carregar dados de qualidade.")
       } finally {
@@ -124,7 +118,7 @@ export function Qualidade() {
       <LayoutS.PageHeader>
         <LayoutS.PageTitle>Qualidade e NPS</LayoutS.PageTitle>
         <LayoutS.PageSubtitle>
-          NPS médio no tempo e por canal; índices de qualidade (polpa: qualidade e perda; extrato: cor e pureza).
+          NPS médio no tempo e por canal.
         </LayoutS.PageSubtitle>
       </LayoutS.PageHeader>
       <LayoutS.PageContent>
@@ -262,87 +256,6 @@ export function Qualidade() {
               )}
               {!loadingData && !npsCanal.length && (
                 <S.ChartPlaceholder>Nenhum dado de NPS por canal no período.</S.ChartPlaceholder>
-              )}
-            </S.ChartCard>
-
-            <S.ChartCard style={{ marginBottom: "1.5rem" }}>
-              <S.ChartTitle>
-                {tipo === "polpa" ? "Qualidade e perda (média por período)" : "Cor e pureza (média por período)"}
-              </S.ChartTitle>
-              {loadingData && <S.ChartPlaceholder>Carregando…</S.ChartPlaceholder>}
-              {!loadingData && indicesPeriodo.length > 0 && (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={indicesPeriodo} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={colors.grayPale} />
-                    <XAxis
-                      dataKey="periodo"
-                      tickFormatter={formatPeriodo}
-                      tick={{ fontSize: 12, fill: colors.textMuted }}
-                      axisLine={{ stroke: colors.grayPale }}
-                    />
-                    <YAxis
-                      tickFormatter={formatNumber}
-                      tick={{ fontSize: 12, fill: colors.textMuted }}
-                      axisLine={{ stroke: colors.grayPale }}
-                      width={40}
-                    />
-                    <Tooltip
-                      formatter={(value: number) => [formatNumber(value)]}
-                      labelFormatter={(label) => formatPeriodo(String(label))}
-                      contentStyle={{
-                        borderRadius: 8,
-                        border: `1px solid ${colors.grayPale}`,
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                      }}
-                    />
-                    {tipo === "polpa" ? (
-                      <>
-                        <Line
-                          type="monotone"
-                          dataKey="qualidade_media"
-                          name="Qualidade (1-10)"
-                          stroke={colors.green}
-                          strokeWidth={2}
-                          dot={{ fill: colors.green }}
-                          activeDot={{ r: 5 }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="perda_media"
-                          name="Perda processamento (%)"
-                          stroke={colors.amber}
-                          strokeWidth={2}
-                          dot={{ fill: colors.amber }}
-                          activeDot={{ r: 5 }}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <Line
-                          type="monotone"
-                          dataKey="cor_media"
-                          name="Cor (1-10)"
-                          stroke={colors.green}
-                          strokeWidth={2}
-                          dot={{ fill: colors.green }}
-                          activeDot={{ r: 5 }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="pureza_media"
-                          name="Pureza (1-10)"
-                          stroke={colors.amber}
-                          strokeWidth={2}
-                          dot={{ fill: colors.amber }}
-                          activeDot={{ r: 5 }}
-                        />
-                      </>
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-              {!loadingData && !indicesPeriodo.length && (
-                <S.ChartPlaceholder>Nenhum dado de índices no período.</S.ChartPlaceholder>
               )}
             </S.ChartCard>
 

@@ -194,6 +194,15 @@ export interface FinanceiroPeriodoPoint {
   quantidade_litros?: number
 }
 
+/** Normaliza período para string YYYY-MM (para gráficos). */
+function normalizarPeriodo(p: unknown): string {
+  if (p == null) return ""
+  const s = String(p)
+  if (/^\d{4}-\d{2}$/.test(s)) return s
+  if (/^\d{6}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}`
+  return s
+}
+
 export async function fetchFinanceiroReceitaPorPeriodo(
   tipo: "polpa" | "extrato" | "todos",
   fromComp?: string,
@@ -205,7 +214,16 @@ export async function fetchFinanceiroReceitaPorPeriodo(
   const res = await fetch(`${BASE}/api/financeiro/receita-por-periodo?${params}`)
   if (!res.ok) throw new Error("Erro ao buscar receita por período")
   const data = await res.json()
-  return data.dados ?? []
+  const raw = data.dados ?? data.data ?? []
+  if (!Array.isArray(raw)) return []
+  return raw.map((r: Record<string, unknown>) => ({
+    periodo: normalizarPeriodo(r.periodo ?? r._id ?? r.competencia),
+    receita: Number(r.receita) || 0,
+    receita_polpa: r.receita_polpa != null ? Number(r.receita_polpa) : undefined,
+    receita_extrato: r.receita_extrato != null ? Number(r.receita_extrato) : undefined,
+    quantidade_kg: r.quantidade_kg != null ? Number(r.quantidade_kg) : undefined,
+    quantidade_litros: r.quantidade_litros != null ? Number(r.quantidade_litros) : undefined,
+  }))
 }
 
 /** Canal no ranking (com registros). */
